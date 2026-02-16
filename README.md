@@ -33,7 +33,6 @@ O sistema **ReserveAqui** tem como objetivo facilitar o gerenciamento de reserva
 
 ### Funcionalidades para Clientes
 - Cadastro e login de usuários  
-- Visualização de cardápio digital  
 - Consulta de disponibilidade de mesas  
 - Realização, edição e cancelamento de reservas online  
 - Recebimento de confirmação da reserva  
@@ -43,11 +42,10 @@ O sistema **ReserveAqui** tem como objetivo facilitar o gerenciamento de reserva
 - Gerenciamento de horários e disponibilidade  
 - Visualização das reservas realizadas  
 - Geração de relatórios gerenciais:
-  - Taxa de ocupação  
-  - Horários mais movimentados  
-  - Preferências dos clientes (pratos mais visualizados/reservados)  
+  - Taxa de ocupação
+  - Horários mais movimentados
 
 ### Limitações do Escopo (Inicial)
 - Não inclui sistema de pagamento online  
 - Não inclui integração com aplicativos externos (ex: iFood, Uber Eats)  
-- Interface focada inicialmente em ambiente web  
+- Interface focada em ambiente web
