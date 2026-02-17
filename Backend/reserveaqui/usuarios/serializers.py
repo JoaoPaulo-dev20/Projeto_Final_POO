@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import Usuario, Papel
+from .validators import validar_forca_senha
 
 
 class PapelSerializer(serializers.ModelSerializer):
@@ -20,7 +21,12 @@ class UsuarioSerializer(serializers.ModelSerializer):
         required=False,
         source='papeis'
     )
-    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'},
+        validators=[validar_forca_senha]
+    )
     password_confirm = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
 
     class Meta:
