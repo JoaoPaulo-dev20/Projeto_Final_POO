@@ -79,3 +79,41 @@ class LoginSerializer(serializers.Serializer):
 
         data['usuario'] = usuario
         return data
+
+
+class TrocarSenhaSerializer(serializers.Serializer):
+    """Serializer para trocar senha do usuário autenticado"""
+    senha_atual = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'}
+    )
+    nova_senha = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'},
+        validators=[validar_forca_senha]
+    )
+    nova_senha_confirm = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'}
+    )
+
+    def validate(self, data):
+        """Validar senha atual e confirmar nova senha"""
+        user = self.context['request'].user
+        
+        # Verificar senha atual
+        if not user.check_password(data['senha_atual']):
+            raise serializers.ValidationError({'senha_atual': 'Senha atual incorreta.'})
+        
+        # Verificar se novas senhas batem
+        if data['nova_senha'] != data['nova_senha_confirm']:
+            raise serializers.ValidationError({'nova_senha': 'As novas senhas não correspondem.'})
+        
+        # Validar se a nova senha é diferente da atual
+        if data['senha_atual'] == data['nova_senha']:
+            raise serializers.ValidationError({'nova_senha': 'Nova senha deve ser diferente da senha atual.'})
+        
+        return data
