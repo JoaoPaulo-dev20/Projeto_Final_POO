@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
+    'corsheaders',
+    'drf_spectacular',
     'usuarios',
     'restaurantes',
     'mesas',
@@ -47,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -134,6 +137,20 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular configuration for Swagger/OpenAPI
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'ReserveAqui API',
+    'DESCRIPTION': 'API REST para gerenciamento de reservas de mesas em restaurantes',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'SERVERS': [
+        {'url': 'http://localhost:8000', 'description': 'Local development'},
+        {'url': 'http://localhost:3000', 'description': 'Frontend development'},
+    ],
 }
 
 # JWT Configuration
@@ -163,3 +180,35 @@ DEFAULT_FROM_EMAIL = 'noreply@reserveaqui.com'
 # Em desenvolvimento: http://localhost:3000
 # Em produção: https://seu-dominio.com
 FRONTEND_URL = 'http://localhost:3000'
+
+# CORS Configuration para React + TypeScript Frontend
+# Permite requisições cross-origin do frontend
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',      # React dev server
+    'http://localhost:8000',      # Django dev server
+    'http://127.0.0.1:3000',      # Alternativo
+    'http://127.0.0.1:8000',      # Alternativo
+]
+
+# Para produção, decomente e configure com domínios reais:
+# CORS_ALLOWED_ORIGINS = [
+#     'https://seu-dominio.com',
+#     'https://www.seu-dominio.com',
+# ]
+
+# Em desenvolvimento, permitir todos (CUIDADO: apenas para desenvolvimento!)
+# CORS_ALLOW_ALL_ORIGINS = True
+
+# Configurações adicionais de CORS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]

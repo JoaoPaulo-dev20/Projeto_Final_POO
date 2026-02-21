@@ -1,6 +1,6 @@
-# Backend - Sistema de Gerenciamento de Reservas de Mesas
+# Backend - ReserveAqui API
 
-Backend desenvolvido em **Django 6.0.2** com **Django REST Framework** e **JWT Authentication**.
+API REST para gerenciamento de reservas de mesas em restaurantes, desenvolvida em **Django 6.0.2** com **Django REST Framework** e **JWT Authentication**.
 
 ## Requisitos
 
@@ -10,10 +10,12 @@ Backend desenvolvido em **Django 6.0.2** com **Django REST Framework** e **JWT A
 - djangorestframework-simplejwt 5.5.0
 - django-filter 24.3
 - python-decouple 3.8
+- django-cors-headers 4.3.1
+- drf-spectacular 0.27.0
 
 ## Setup Inicial
 
-### 1. Criar e ativar ambiente virtual
+### 1. Ambiente Virtual
 
 ```powershell
 # Navegue até o diretório do backend
@@ -22,27 +24,24 @@ cd Backend/reserveaqui
 # Crie o ambiente virtual
 python -m venv venv
 
-# Ative o ambiente virtual (Windows PowerShell)
+# Ative (Windows PowerShell)
 .\venv\Scripts\Activate.ps1
-
-# OU para Windows CMD
-venv\Scripts\activate.bat
 ```
 
-### 2. Instalar dependências
+### 2. Instalar Dependências
 
 ```powershell
 pip install -r ../requirements.txt
 ```
 
-### 3. Executar migrações e criar superusuário
+### 3. Migrações e Superusuário
 
 ```powershell
 python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 4. Executar servidor de desenvolvimento
+### 4. Executar Servidor
 
 ```powershell
 python manage.py runserver
@@ -52,140 +51,195 @@ Acesse: `http://127.0.0.1:8000/`
 
 ---
 
-## APIs Disponíveis
-
-### App: Usuarios
-
-#### Modelos:
-- **Usuario**: Usuário customizado (email como identificador)
-- **Papel**: Define os 4 papéis (admin_sistema, admin_secundario, funcionario, cliente)
-- **UsuarioPapel**: Relacionamento entre Usuários e Papéis
-
-#### Endpoints:
-
-| Endpoint | Método | Descrição | Autenticação |
-|----------|--------|-----------|--------------|
-| `/api/usuarios/cadastro/` | POST | Cadastrar novo usuário | Não |
-| `/api/usuarios/login/` | POST | Login e obter tokens | Não |
-| `/api/usuarios/me/` | GET | Dados do usuário logado | Sim |
-| `/api/usuarios/trocar_senha/` | POST | Trocar senha | Sim |
-| `/api/token/refresh/` | POST | Renovar token | Sim |
-
-#### Validações de Senha:
-- Mínimo 8 caracteres
-- Pelo menos 1 letra maiúscula
-- Pelo menos 1 número
-
----
-
-### App: Restaurantes
-
-#### Modelos:
-- **Restaurante**: Dados do restaurante (nome, endereço, proprietário, quantidade_mesas)
-- **RestauranteUsuario**: Vínculo de usuários ao restaurante com papéis
-
-#### Endpoints:
-
-| Endpoint | Método | Descrição | Permissão |
-|----------|--------|-----------|-----------|
-| `/api/restaurantes/` | GET | Listar restaurantes | Autenticado |
-| `/api/restaurantes/{id}/` | GET | Detalhes do restaurante | Autenticado |
-| `/api/restaurantes/` | POST | Criar restaurante | Admin |
-| `/api/restaurantes/{id}/` | PUT/PATCH | Atualizar restaurante | Proprietário/Admin |
-| `/api/restaurantes/{id}/` | DELETE | Remover restaurante | Admin |
-| `/api/restaurantes/{id}/mesas/` | GET | Listar mesas do restaurante | Autenticado |
-| `/api/restaurantes/{id}/equipe/` | GET | Listar equipe do restaurante | Autenticado |
-| `/api/restaurantes/{id}/adicionar_usuario/` | POST | Adicionar usuário à equipe | Proprietário/Admin |
-
-#### Filtros Disponíveis:
-- `?cidade=<cidade>` - Filtrar por cidade
-- `?estado=<estado>` - Filtrar por estado
-- `?ativo=true/false` - Filtrar por status
-- `?search=<termo>` - Buscar por nome, cidade ou endereço
-- `?ordering=nome,-data_criacao` - Ordenar resultados
-
----
-
-### App: Mesas
-
-#### Modelos:
-- **Mesa**: Mesa do restaurante (número, status, capacidade fixa de 4 pessoas)
-
-#### Funcionalidades:
-- Criação automática de mesas ao cadastrar restaurante
-- Capacidade fixa de 4 pessoas por mesa
-- Status: disponível, ocupada, manutenção
-
----
-
-### App: Reservas
-
-#### Modelos:
-- **Reserva**: Reserva de mesas (data, horário, quantidade de pessoas, status)
-- **ReservaMesa**: Vínculo entre reserva e mesas alocadas
-
-#### Funcionalidades:
-- Cálculo automático de mesas necessárias (ceil(pessoas/4))
-- Validação de antecedência mínima (2 horas)
-- Status: pendente, confirmada, cancelada, concluída
-- Suporte para reservas com/sem usuário cadastrado
-
----
-
 ## Autenticação JWT
 
-Para acessar endpoints protegidos, inclua o token no header:
+Todos os endpoints protegidos requerem um token JWT no header:
 
 ```
 Authorization: Bearer <seu_access_token>
 ```
 
-### Fluxo de Autenticação:
+### Fluxo:
 
-1. **Login**: POST `/api/usuarios/login/`
-   ```json
-   {
-     "email": "usuario@example.com",
-     "password": "SenhaForte123"
-   }
-   ```
-   Retorna: `access` e `refresh` tokens
+1. **Login**: `POST /api/usuarios/login/`
+   - Retorna: `access` (1h) e `refresh` (7d) tokens
 
-2. **Usar Access Token**: Incluir no header das requisições
+2. **Usar Access Token**: Incluir em todas as requisições
    ```
    Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc...
    ```
 
-3. **Renovar Token**: POST `/api/token/refresh/`
-   ```json
-   {
-     "refresh": "seu_refresh_token"
-   }
-   ```
-   Retorna novo `access` token
+3. **Renovar Token**: `POST /api/token/refresh/`
+   - Envia `refresh` token, recebe novo `access` token
 
 ---
 
-## Testes
+## Endpoints Principais
 
-Execute os testes de todos os apps:
+### **Usuarios** - Autenticação e Gestão de Usuários
+
+| Endpoint | Método | Descrição | Auth |
+|----------|--------|-----------|------|
+| `/api/usuarios/cadastro/` | POST | Registrar novo usuário | ❌ |
+| `/api/usuarios/login/` | POST | Login com JWT | ❌ |
+| `/api/usuarios/me/` | GET | Dados do usuário logado | ✅ |
+| `/api/usuarios/trocar_senha/` | POST | Mudar senha | ✅ |
+| `/api/usuarios/solicitar_recuperacao/` | POST | Recuperar senha (envia email) | ❌ |
+| `/api/usuarios/redefinir_senha/` | POST | Redefinir com token | ❌ |
+
+**Validação de Senha**: Mínimo 8 caracteres, 1 letra maiúscula, 1 número
+
+---
+
+### **Restaurantes** - CRUD de Restaurantes
+
+| Endpoint | Método | Descrição | Permissão |
+|----------|--------|-----------|-----------|
+| `/api/restaurantes/` | GET | Listar restaurantes | Autenticado |
+| `/api/restaurantes/` | POST | Criar restaurante | Admin |
+| `/api/restaurantes/{id}/` | GET | Detalhes | Autenticado |
+| `/api/restaurantes/{id}/` | PUT/PATCH | Editar | Proprietário/Admin |
+| `/api/restaurantes/{id}/` | DELETE | Deletar | Admin |
+| `/api/restaurantes/{id}/mesas/` | GET | Mesas do restaurante | Autenticado |
+| `/api/restaurantes/{id}/equipe/` | GET | Equipe | Autenticado |
+| `/api/restaurantes/{id}/adicionar_usuario/` | POST | Adicionar usuário | Proprietário/Admin |
+
+**Filtros**: `?search=<nome>`, `?ativo=true/false`, `?ordering=nome`
+
+---
+
+### **Mesas** - Gestão de Mesas
+
+| Endpoint | Método | Descrição | Permissão |
+|----------|--------|-----------|-----------|
+| `/api/mesas/` | GET | Listar mesas | Autenticado |
+| `/api/mesas/` | POST | Criar mesa | Admin |
+| `/api/mesas/{id}/` | GET | Detalhes | Autenticado |
+| `/api/mesas/{id}/` | PUT/PATCH | Editar | Admin |
+| `/api/mesas/{id}/` | DELETE | Deletar | Admin |
+| `/api/mesas/disponibilidade/` | GET | Verificar disponibilidade | Autenticado |
+| `/api/mesas/{id}/alternar_status/` | POST | Mudar status | Funcionário/Admin |
+| `/api/mesas/{id}/alternar_ativa/` | POST | Ativar/Desativar | Admin |
+
+**Disponibilidade**: Query params `?data=YYYY-MM-DD`, `?horario=HH:MM`, `?pessoas=N`
+
+---
+
+### **Reservas** - Reservas de Mesas
+
+| Endpoint | Método | Descrição | Permissão |
+|----------|--------|-----------|-----------|
+| `/api/reservas/` | GET | Listar reservas | Admin |
+| `/api/reservas/` | POST | Criar reserva | Autenticado |
+| `/api/reservas/{id}/` | GET | Detalhes | Dono/Admin |
+| `/api/reservas/{id}/` | PUT/PATCH | Editar | Dono/Admin |
+| `/api/reservas/{id}/` | DELETE | Cancelar | Dono/Admin |
+| `/api/reservas/{id}/confirmar/` | POST | Confirmar reserva | Admin |
+| `/api/reservas/{id}/cancelar/` | POST | Cancelar reserva | Dono/Admin |
+| `/api/reservas/minhas_reservas/` | GET | Minhas reservas | Autenticado |
+| `/api/reservas/ocupacao/` | GET | Relatório de ocupação | Admin |
+| `/api/reservas/horarios_movimentados/` | GET | Horários mais movimentados | Admin |
+| `/api/reservas/estatisticas_periodo/` | GET | Estatísticas por período | Admin |
+
+**Regras de Negócio**:
+- Mínimo 2 horas de antecedência
+- Mesas alocadas automaticamente (ceil(pessoas/4))
+- Validação de conflitos (±1h)
+- Capacidade respeitada por mesa
+
+---
+
+### **Notificações** - Sistema de Notificações
+
+| Endpoint | Método | Descrição | Permissão |
+|----------|--------|-----------|-----------|
+| `/api/notificacoes/` | GET | Listar notificações | Autenticado |
+| `/api/notificacoes/{id}/` | GET | Detalhes | Dono |
+| `/api/notificacoes/{id}/marcar_como_lida/` | POST | Marcar como lida | Dono |
+| `/api/notificacoes/marcar_todas_como_lidas/` | POST | Marcar todas como lidas | Autenticado |
+| `/api/notificacoes/nao_lidas/` | GET | Contar não lidas | Autenticado |
+
+**Tipos de Notificações**: confirmacao, cancelamento, lembranca, atualizacao
+
+---
+
+### **Relatórios** - Dados e Análises
+
+| Endpoint | Método | Descrição | Permissão |
+|----------|--------|-----------|-----------|
+| `/api/reservas/ocupacao/` | GET | Taxa de ocupação por data | Admin |
+| `/api/reservas/horarios_movimentados/` | GET | 10 horários mais reservados | Admin |
+| `/api/reservas/estatisticas_periodo/` | GET | Estatísticas (dia/semana/mês) | Admin |
+
+**Query Params**:
+- `?data_inicio=YYYY-MM-DD`
+- `?data_fim=YYYY-MM-DD`
+- `?restaurante_id=<id>`
+- `?tipo_periodo=day/week/month` (para estatísticas)
+
+---
+
+## CORS - Frontend Integration
+
+API configurada para aceitar requisições do frontend React em `localhost:3000`:
+
+```javascript
+// Frontend (React/TypeScript)
+const response = await fetch('http://localhost:8000/api/usuarios/login/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  credentials: 'include', // Para enviar cookies (se necessário)
+  body: JSON.stringify({
+    email: 'usuario@example.com',
+    password: 'SenhaForte123'
+  })
+});
+```
+
+**Domínios Permitidos**: `localhost:3000`, `localhost:8000`
+
+---
+
+## Documentação Interativa (Swagger)
+
+### Acessar Documentação
+
+#### **Swagger UI** (Recomendado)
+- URL: `http://127.0.0.1:8000/api/docs/swagger/`
+- Teste endpoints diretamente na interface
+- Suporte para autenticação JWT
+
+#### **ReDoc**
+- URL: `http://127.0.0.1:8000/api/docs/redoc/`
+- Documentação em formato de referência
+
+#### **OpenAPI Schema**
+- URL: `http://127.0.0.1:8000/api/schema/`
+- Especificação OpenAPI 3.0 em JSON
+
+### Como Usar Swagger
+
+1. Acesse `http://127.0.0.1:8000/api/docs/swagger/`
+2. Clique em **"Authorize"**
+3. Cole seu JWT token: `Bearer <seu_access_token>`
+4. Teste os endpoints diretamente
+
+---
+
+## 🧪 Testes
 
 ```powershell
 # Todos os testes
 python manage.py test
 
-# App específico
+# Por app
 python manage.py test usuarios
 python manage.py test restaurantes
 python manage.py test mesas
 python manage.py test reservas
 ```
-
-**Total de testes**: 59 testes
-- usuarios: 21 testes
-- restaurantes: 9 testes
-- mesas: 11 testes
-- reservas: 18 testes
 
 ---
 
@@ -195,41 +249,84 @@ python manage.py test reservas
 Backend/
 ├── reserveaqui/
 │   ├── manage.py
-│   ├── reserveaqui/          # Configurações do projeto
-│   │   ├── settings.py
-│   │   ├── urls.py
+│   ├── reserveaqui/              # Configurações principais
+│   │   ├── settings.py           
+│   │   ├── urls.py               
+│   │   ├── asgi.py
 │   │   └── wsgi.py
-│   ├── usuarios/             # App de autenticação
-│   │   ├── models.py
-│   │   ├── serializers.py
-│   │   ├── views.py
-│   │   └── tests.py
-│   ├── restaurantes/         # App de restaurantes
-│   │   ├── models.py
-│   │   ├── serializers.py
-│   │   ├── views.py
-│   │   ├── permissions.py
-│   │   └── tests.py
-│   ├── mesas/               # App de mesas
-│   │   ├── models.py
-│   │   ├── serializers.py
-│   │   └── tests.py
-│   └── reservas/            # App de reservas
-│       ├── models.py
-│       ├── admin.py
-│       └── tests.py
-└── requirements.txt
+│   │
+│   ├── usuarios/                 
+│   │   ├── models.py             
+│   │   ├── views.py              
+│   │   ├── serializers.py        
+│   │   ├── permissions.py        
+│   │   └── tests.py              
+│   │
+│   ├── restaurantes/             
+│   │   ├── models.py             
+│   │   ├── views.py              
+│   │   ├── serializers.py        
+│   │   ├── permissions.py        
+│   │   └── tests.py              
+│   │
+│   ├── mesas/                    
+│   │   ├── models.py             
+│   │   ├── views.py              
+│   │   ├── serializers.py        
+│   │   └── tests.py             
+│   │
+│   └── reservas/                 
+│       ├── models.py             
+│       ├── views.py              
+│       ├── serializers.py        
+│       ├── admin.py             
+│       ├── reports.py            
+│       └── tests.py              
+│
+└── requirements.txt              # Dependências Python
 ```
+
+---
+
+## Email (Password Recovery)
+
+**Desenvolvimento**: Imprime email no console
+```
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+```
+
+**Produção**: Configurar SMTP (exemplo Gmail):
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'seu_email@gmail.com'
+EMAIL_HOST_PASSWORD = 'sua_senha_de_app'
+```
+
+---
+
+## Papéis e Permissões
+
+| Papel | Permissões |
+|-------|-----------|
+| **admin_sistema** | Acesso total a todos recursos |
+| **admin_secundario** | Gerenciar restaurantes e equipe |
+| **funcionario** | Gerenciar mesas e reservas do restaurante |
+| **cliente** | Criar e visualizar próprias reservas |
 
 ---
 
 ## Admin Panel
 
-Acesse o painel administrativo em: `http://127.0.0.1:8000/admin/`
+Acesse: `http://127.0.0.1:8000/admin/`
 
-Funcionalidades disponíveis:
-- Gerenciar usuários e papéis
-- Gerenciar restaurantes e equipes
-- Visualizar e editar mesas
-- Gerenciar reservas e vínculos de mesas
-- Inline editing para relacionamentos
+Gerenciar:
+- Usuários e Papéis
+- Restaurantes e Equipes
+- Mesas e Status
+- Reservas e Notificações
+- Tokens de Recuperação de Senha
+
+---
