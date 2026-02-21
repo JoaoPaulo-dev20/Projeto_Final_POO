@@ -5,11 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.utils import timezone
-from .models import Reserva, ReservaMesa
+from .models import Reserva, ReservaMesa, Notificacao
 from .serializers import (
     ReservaSerializer,
     ReservaListSerializer,
-    ReservaCreateUpdateSerializer
+    ReservaCreateUpdateSerializer,
+    NotificacaoSerializer
 )
 from .permissions import IsOwnerOrAdminForReservas
 
@@ -106,6 +107,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         """
         RF07: Confirmar reserva.
         Apenas admins podem confirmar.
+        Cria automaticamente uma notificação para o cliente.
         """
         # Verificar se é admin
         is_admin = request.user.usuariopapel_set.filter(
@@ -143,8 +145,17 @@ class ReservaViewSet(viewsets.ModelViewSet):
         reserva.status = 'confirmada'
         reserva.save()
         
-        # TODO: RF07 - Aqui seria enviada uma notificação ao cliente
-        # Implementar sistema de notificações (email, SMS, etc)
+        # RF07: Criar notificação de confirmação para o cliente
+        if reserva.usuario:
+            Notificacao.objects.create(
+                usuario=reserva.usuario,
+                reserva=reserva,
+                tipo='confirmacao',
+                titulo=f'Reserva Confirmada - {reserva.restaurante.nome}',
+                mensagem=f'Sua reserva para {reserva.quantidade_pessoas} pessoas em {reserva.restaurante.nome} '
+                         f'foi confirmada para {reserva.data_reserva} às {reserva.horario}. '
+                         f'Mesas: {", ".join([str(m.numero) for m in reserva.mesas.all()])}'
+            )
         
         serializer = ReservaSerializer(reserva)
         return Response({
@@ -276,3 +287,61 @@ class ReservaViewSet(viewsets.ModelViewSet):
         }
         
         return Response(stats)
+
+class NotificacaoViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para gerenciar notificações do usuário.
+    RF07: Informar ao cliente a confirmação da reserva.
+    """
+    
+    serializer_class = NotificacaoSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['tipo', 'lido']
+    ordering_fields = ['data_criacao', 'data_leitura']
+    ordering = ['-data_criacao']
+    
+    def get_queryset(self):
+        """Retornar apenas notificações do usuário autenticado"""
+        return Notificacao.objects.filter(usuario=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def marcar_como_lida(self, request, pk=None):
+        """Marca uma notificação como lida"""
+        notificacao = self.get_object()
+        notificacao.marcar_como_lida()
+        serializer = self.get_serializer(notificacao)
+        return Response({
+            'message': 'Notificação marcada como lida.',
+            'notificacao': serializer.data
+        })
+    
+    @action(detail=False, methods=['post'])
+    def marcar_todas_como_lidas(self, request):
+        """Marca todas as notificações não lidas como lidas"""
+        notificacoes = self.get_queryset().filter(lido=False)
+        count = notificacoes.count()
+        
+        for notificacao in notificacoes:
+            notificacao.marcar_como_lida()
+        
+        return Response({
+            'message': f'{count} notificação(ões) marcada(s) como lida(s).',
+            'quantidade': count
+        })
+    
+    @action(detail=False, methods=['get'])
+    def nao_lidas(self, request):
+        """Retorna apenas notificações não lidas"""
+        queryset = self.get_queryset().filter(lido=False)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'total': queryset.count(),
+            'notificacoes': serializer.data
+        })

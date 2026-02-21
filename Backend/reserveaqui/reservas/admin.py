@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Reserva, ReservaMesa
+from .models import Reserva, ReservaMesa, Notificacao
 
 
 class ReservaMesaInline(admin.TabularInline):
@@ -104,3 +104,62 @@ class ReservaMesaAdmin(admin.ModelAdmin):
     ]
     
     readonly_fields = ['data_vinculacao']
+
+@admin.register(Notificacao)
+class NotificacaoAdmin(admin.ModelAdmin):
+    """Admin para o modelo Notificacao"""
+    
+    list_display = [
+        'id',
+        'usuario',
+        'titulo',
+        'tipo',
+        'lido',
+        'data_criacao'
+    ]
+    
+    list_filter = [
+        'tipo',
+        'lido',
+        'data_criacao'
+    ]
+    
+    search_fields = [
+        'usuario__email',
+        'titulo',
+        'mensagem'
+    ]
+    
+    readonly_fields = [
+        'data_criacao',
+        'data_leitura'
+    ]
+    
+    fieldsets = (
+        ('Notificação', {
+            'fields': (
+                'usuario',
+                'reserva',
+                'tipo',
+                'titulo',
+                'mensagem'
+            )
+        }),
+        ('Status', {
+            'fields': (
+                'lido',
+                'data_criacao',
+                'data_leitura'
+            )
+        })
+    )
+    
+    actions = ['marcar_como_lidas']
+    
+    def marcar_como_lidas(self, request, queryset):
+        """Action para marcar notificações como lidas"""
+        count = queryset.count()
+        for notificacao in queryset:
+            notificacao.marcar_como_lida()
+        self.message_user(request, f'{count} notificação(ões) marcada(s) como lida(s).')
+    marcar_como_lidas.short_description = "Marcar selecionadas como lidas"

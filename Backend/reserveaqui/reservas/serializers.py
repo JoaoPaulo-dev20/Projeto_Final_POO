@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from datetime import timedelta, datetime
 import math
-from .models import Reserva, ReservaMesa
+from .models import Reserva, ReservaMesa, Notificacao
 from mesas.models import Mesa
 from restaurantes.models import Restaurante
 
@@ -234,3 +234,19 @@ class ReservaCreateUpdateSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+
+class NotificacaoSerializer(serializers.ModelSerializer):
+    """Serializer para notificações de reservas"""
+    reserva_id = serializers.IntegerField(source='reserva.id', read_only=True)
+    reserva_restaurante = serializers.CharField(source='reserva.restaurante.nome', read_only=True)
+    reserva_data = serializers.DateField(source='reserva.data_reserva', read_only=True)
+    reserva_horario = serializers.TimeField(source='reserva.horario', read_only=True)
+    
+    class Meta:
+        model = Notificacao
+        fields = [
+            'id', 'tipo', 'get_tipo_display', 'titulo', 'mensagem',
+            'lido', 'reserva_id', 'reserva_restaurante', 'reserva_data',
+            'reserva_horario', 'data_criacao', 'data_leitura'
+        ]
+        read_only_fields = ['id', 'data_criacao', 'data_leitura']

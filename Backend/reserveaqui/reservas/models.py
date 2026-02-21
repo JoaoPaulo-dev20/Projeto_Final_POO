@@ -152,3 +152,63 @@ class ReservaMesa(models.Model):
     
     def __str__(self):
         return f"Reserva {self.reserva.id} - Mesa {self.mesa.numero}"
+
+class Notificacao(models.Model):
+    """
+    Modelo para armazenar notificações de reservas.
+    RF07: Informar ao cliente a confirmação da reserva.
+    """
+    
+    TIPO_NOTIFICACAO = [
+        ('confirmacao', 'Confirmação de Reserva'),
+        ('cancelamento', 'Cancelamento de Reserva'),
+        ('lembranca', 'Lembrança de Reserva'),
+        ('atualizacao', 'Atualização de Reserva'),
+    ]
+    
+    # Relações
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='notificacoes',
+        verbose_name='Usuário'
+    )
+    reserva = models.ForeignKey(
+        Reserva,
+        on_delete=models.CASCADE,
+        related_name='notificacoes',
+        verbose_name='Reserva'
+    )
+    
+    # Dados da notificação
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_NOTIFICACAO,
+        default='confirmacao',
+        verbose_name='Tipo de Notificação'
+    )
+    titulo = models.CharField(max_length=200, verbose_name='Título')
+    mensagem = models.TextField(verbose_name='Mensagem')
+    lido = models.BooleanField(default=False, verbose_name='Lido')
+    
+    # Timestamps
+    data_criacao = models.DateTimeField(auto_now_add=True, verbose_name='Data de Criação')
+    data_leitura = models.DateTimeField(null=True, blank=True, verbose_name='Data de Leitura')
+    
+    class Meta:
+        verbose_name = 'Notificação'
+        verbose_name_plural = 'Notificações'
+        ordering = ['-data_criacao']
+        indexes = [
+            models.Index(fields=['usuario', 'lido']),
+            models.Index(fields=['usuario', '-data_criacao']),
+        ]
+    
+    def __str__(self):
+        return f"{self.titulo} - {self.usuario.email}"
+    
+    def marcar_como_lida(self):
+        """Marca a notificação como lida"""
+        self.lido = True
+        self.data_leitura = timezone.now()
+        self.save()
