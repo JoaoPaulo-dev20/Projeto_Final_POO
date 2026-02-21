@@ -10,7 +10,7 @@ from .serializers import (
     RestauranteCreateUpdateSerializer,
     RestauranteUsuarioSerializer
 )
-from .permissions import IsAdminOrReadOnly, IsProprietarioOrAdmin
+from .permissions import IsAdminOrReadOnly, IsProprietarioOrAdmin, IsAdminSystemOnly
 
 
 class RestauranteViewSet(viewsets.ModelViewSet):
@@ -46,26 +46,46 @@ class RestauranteViewSet(viewsets.ModelViewSet):
         if self.action in ['update', 'partial_update']:
             return [IsAuthenticated(), IsProprietarioOrAdmin()]
         elif self.action == 'destroy':
-            return [IsAuthenticated(), IsAdminOrReadOnly()]
+            # 🔒 Apenas admin_sistema pode deletar restaurante (não admin_secundario)
+            return [IsAuthenticated(), IsAdminSystemOnly()]
         return super().get_permissions()
     
     def get_queryset(self):
-        """Filtra restaurantes ativos por padrão para usuários não-admin"""
+        """
+        Filtra restaurantes baseado no papel do usuário:
+        - admin_sistema: Vê todos (incluindo inativos)
+        - admin_secundario: Vê apenas seu restaurante (como proprietário)
+        - Outros autenticados: Veem apenas restaurantes ativos
+        """
         queryset = super().get_queryset()
+        user = self.request.user
         
-        # Verifica se o usuário é admin
-        if self.request.user.is_authenticated:
-            is_admin = self.request.user.usuariopapel_set.filter(
-                papel__nome__in=['admin_sistema', 'admin_secundario']
-            ).exists()
-            
-            # Se não for admin, mostra apenas restaurantes ativos
-            if not is_admin:
-                queryset = queryset.filter(ativo=True)
-        else:
-            queryset = queryset.filter(ativo=True)
+        if not user.is_authenticated:
+            return queryset.filter(ativo=True)
         
-        return queryset
+        # Admin_sistema vê todos (incluindo inativos)
+        is_admin_sistema = user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
+        ).exists()
+        
+        if is_admin_sistema:
+            return queryset  # Vê tudo
+        
+        # Admin_secundario vê apenas seu restaurante
+        is_admin_secundario = user.usuariopapel_set.filter(
+            papel__nome='admin_secundario'
+        ).exists()
+        
+        if is_admin_secundario:
+            # 🔒 Admin_secundario é proprietário de apenas 1 restaurante
+            restaurante = queryset.filter(proprietario=user).first()
+            if restaurante:
+                return queryset.filter(id=restaurante.id)
+            else:
+                return queryset.none()
+        
+        # Clientes e funcionários veem apenas restaurantes ativos
+        return queryset.filter(ativo=True)
     
     def perform_create(self, serializer):
         """Ao criar, define o usuário atual como proprietário se não especificado"""

@@ -7,7 +7,8 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import Mesa
 from .serializers import MesaSerializer, MesaListSerializer
-from .permissions import IsAdminForWriteOrReadOnly, IsAdminOrProprietarioRestaurante
+from .permissions import IsAdminForWriteOrReadOnly, IsAdminOrProprietarioRestaurante, IsFuncionarioOrHigher
+from restaurantes.models import RestauranteUsuario
 
 
 class MesaViewSet(viewsets.ModelViewSet):
@@ -43,10 +44,64 @@ class MesaViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
     
     def get_queryset(self):
-        """Filtra mesas baseado nos parâmetros"""
+        """
+        Filtra mesas baseado no papel do usuário:
+        - admin_sistema: Vê todas as mesas de todos os restaurantes
+        - admin_secundario: Vê apenas mesas de seu restaurante
+        - funcionario: Vê apenas mesas de seu restaurante (via RestauranteUsuario)
+        - cliente: Via query param restaurante_id apenas
+        """
         queryset = super().get_queryset()
+        user = self.request.user
         
-        # Filtro por restaurante via query param
+        if not user.is_authenticated:
+            return queryset.none()
+        
+        # Admin_sistema vê todas
+        is_admin_sistema = user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
+        ).exists()
+        
+        if is_admin_sistema:
+            # Sem filtro restritivo - vê tudo
+            pass
+        else:
+            # Admin_secundario: vê apenas seu restaurante (como proprietário)
+            is_admin_secundario = user.usuariopapel_set.filter(
+                papel__nome='admin_secundario'
+            ).exists()
+            
+            if is_admin_secundario:
+                # 🔒 Apenas mesas do restaurante que é proprietário
+                from restaurantes.models import Restaurante
+                seu_restaurante = Restaurante.objects.filter(proprietario=user).first()
+                if seu_restaurante:
+                    queryset = queryset.filter(restaurante=seu_restaurante)
+                else:
+                    return queryset.none()
+            else:
+                # Funcionário: vê apenas do restaurante onde trabalha
+                is_funcionario = user.usuariopapel_set.filter(
+                    papel__nome='funcionario'
+                ).exists()
+                
+                if is_funcionario:
+                    # 🔒 Buscar restaurantes onde trabalha
+                    restaurantes_ids = RestauranteUsuario.objects.filter(
+                        usuario=user,
+                        papel__nome='funcionario'
+                    ).values_list('restaurante_id', flat=True)
+                    
+                    if restaurantes_ids:
+                        queryset = queryset.filter(restaurante_id__in=restaurantes_ids)
+                    else:
+                        return queryset.none()
+                else:
+                    # Cliente: sem acesso direto via list
+                    # Vê apenas via query param restaurante_id
+                    return queryset.none()
+        
+        # Filtro por restaurante via query param (override)
         restaurante_id = self.request.query_params.get('restaurante_id', None)
         if restaurante_id:
             queryset = queryset.filter(restaurante_id=restaurante_id)
@@ -176,6 +231,7 @@ class MesaViewSet(viewsets.ModelViewSet):
     def alternar_status(self, request, pk=None):
         """
         Alterna o status da mesa entre disponível, ocupada e manutenção.
+        Permitido para: admin_sistema, admin_secundario, funcionario
         
         Body: { "status": "disponivel"|"ocupada"|"manutencao" }
         """
@@ -188,6 +244,44 @@ class MesaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # 🔒 Validar permissão: admin_sistema, admin_secundario ou funcionario
+        user = request.user
+        
+        # Admin_sistema: tudo bem
+        is_admin_sistema = user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
+        ).exists()
+        
+        if not is_admin_sistema:
+            # Admin_secundario: deve ser proprietário
+            if user == mesa.restaurante.proprietario:
+                pass  # OK
+            else:
+                # Funcionário: deve trabalhar naquele restaurante
+                is_funcionario = user.usuariopapel_set.filter(
+                    papel__nome='funcionario'
+                ).exists()
+                
+                if is_funcionario:
+                    # 🔒 Validar que trabalha no restaurante
+                    trabalha_aqui = RestauranteUsuario.objects.filter(
+                        usuario=user,
+                        restaurante=mesa.restaurante,
+                        papel__nome='funcionario'
+                    ).exists()
+                    
+                    if not trabalha_aqui:
+                        return Response(
+                            {"error": "Você não trabalha neste restaurante."},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    # Outro papel sem permissão
+                    return Response(
+                        {"error": "Apenas administradores e funcionários podem alternar status."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
         mesa.status = novo_status
         mesa.save()
         
@@ -198,9 +292,21 @@ class MesaViewSet(viewsets.ModelViewSet):
     def alternar_ativa(self, request, pk=None):
         """
         Ativa ou desativa uma mesa.
+        Apenas admin_sistema pode fazer isso.
         
         Body: { "ativa": true|false }
         """
+        # 🔒 Apenas admin_sistema
+        is_admin_sistema = request.user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
+        ).exists()
+        
+        if not is_admin_sistema:
+            return Response(
+                {"error": "Apenas administradores podem ativar/desativar mesas."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         mesa = self.get_object()
         nova_ativa = request.data.get('ativa')
         

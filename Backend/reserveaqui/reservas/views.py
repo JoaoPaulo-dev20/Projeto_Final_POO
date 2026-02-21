@@ -104,25 +104,72 @@ class ReservaViewSet(viewsets.ModelViewSet):
             'reserva': output_serializer.data
         })
     
-    @action(detail=True, methods=['post'])
-    def confirmar(self, request, pk=None):
+    def destroy(self, request, *args, **kwargs):
         """
-        RF07: Confirmar reserva.
-        Apenas admins podem confirmar.
-        Cria automaticamente uma notificação para o cliente.
+        Apenas admin_sistema pode deletar reserva.
+        Clientes devem usar cancelar/ action ao invés de DELETE.
         """
-        # Verificar se é admin
-        is_admin = request.user.usuariopapel_set.filter(
-            papel__nome__in=['admin_sistema', 'admin_secundario']
+        # 🔒 Apenas admin_sistema
+        is_admin_sistema = request.user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
         ).exists()
         
-        if not is_admin:
+        if not is_admin_sistema:
             return Response(
-                {'error': 'Apenas administradores podem confirmar reservas.'},
+                {'error': 'Clientes devem usar o endpoint cancelar/ para cancelar reservas. '
+                          'Apenas administradores podem deletar.'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
         reserva = self.get_object()
+        reserva.delete()
+        
+        return Response(
+            {'message': 'Reserva deletada permanentemente pelo administrador.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    
+    @action(detail=True, methods=['post'])
+    def confirmar(self, request, pk=None):
+        """
+        RF07: Confirmar reserva.
+        Permitido para: admin_sistema, admin_secundario, funcionario
+        Cria automaticamente uma notificação para o cliente.
+        """
+        reserva = self.get_object()
+        user = request.user
+        
+        # 🔒 Validar permissão
+        is_admin_sistema = user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
+        ).exists()
+        
+        if not is_admin_sistema:
+            # Admin_secundario: deve ser proprietário
+            if user != reserva.restaurante.proprietario:
+                # Funcionário: deve trabalhar naquele restaurante
+                is_funcionario = user.usuariopapel_set.filter(
+                    papel__nome='funcionario'
+                ).exists()
+                
+                if is_funcionario:
+                    from restaurantes.models import RestauranteUsuario
+                    trabalha_aqui = RestauranteUsuario.objects.filter(
+                        usuario=user,
+                        restaurante=reserva.restaurante,
+                        papel__nome='funcionario'
+                    ).exists()
+                    
+                    if not trabalha_aqui:
+                        return Response(
+                            {'error': 'Você não trabalha neste restaurante.'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'Apenas administradores e funcionários podem confirmar reservas.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
         
         # Validar status atual
         if reserva.status == 'confirmada':
@@ -170,8 +217,43 @@ class ReservaViewSet(viewsets.ModelViewSet):
         """
         RF05: Cancelar reserva.
         RN03: Liberar mesas automaticamente ao cancelar.
+        Permitido para: dono da reserva, admin_sistema, admin_secundario, funcionario
         """
         reserva = self.get_object()
+        user = request.user
+        
+        # 🔒 Validar permissão: dono OU admin OU funcionário do restaurante
+        is_dono = reserva.usuario == user
+        is_admin_sistema = user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
+        ).exists()
+        
+        if not (is_dono or is_admin_sistema):
+            # Admin_secundario: deve ser proprietário
+            if user != reserva.restaurante.proprietario:
+                # Funcionário: deve trabalhar naquele restaurante
+                is_funcionario = user.usuariopapel_set.filter(
+                    papel__nome='funcionario'
+                ).exists()
+                
+                if is_funcionario:
+                    from restaurantes.models import RestauranteUsuario
+                    trabalha_aqui = RestauranteUsuario.objects.filter(
+                        usuario=user,
+                        restaurante=reserva.restaurante,
+                        papel__nome='funcionario'
+                    ).exists()
+                    
+                    if not trabalha_aqui:
+                        return Response(
+                            {'error': 'Você não trabalha neste restaurante.'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'Você não tem permissão para cancelar esta reserva.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
         
         # Verificar se pode cancelar
         if reserva.status == 'cancelada':
@@ -209,20 +291,42 @@ class ReservaViewSet(viewsets.ModelViewSet):
     def concluir(self, request, pk=None):
         """
         Marca a reserva como concluída.
-        Apenas admins podem concluir.
+        Permitido para: admin_sistema, admin_secundario, funcionario
         """
-        # Verificar se é admin
-        is_admin = request.user.usuariopapel_set.filter(
-            papel__nome__in=['admin_sistema', 'admin_secundario']
+        reserva = self.get_object()
+        user = request.user
+        
+        # 🔒 Validar permissão
+        is_admin_sistema = user.usuariopapel_set.filter(
+            papel__nome='admin_sistema'
         ).exists()
         
-        if not is_admin:
-            return Response(
-                {'error': 'Apenas administradores podem concluir reservas.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        reserva = self.get_object()
+        if not is_admin_sistema:
+            # Admin_secundario: deve ser proprietário
+            if user != reserva.restaurante.proprietario:
+                # Funcionário: deve trabalhar naquele restaurante
+                is_funcionario = user.usuariopapel_set.filter(
+                    papel__nome='funcionario'
+                ).exists()
+                
+                if is_funcionario:
+                    from restaurantes.models import RestauranteUsuario
+                    trabalha_aqui = RestauranteUsuario.objects.filter(
+                        usuario=user,
+                        restaurante=reserva.restaurante,
+                        papel__nome='funcionario'
+                    ).exists()
+                    
+                    if not trabalha_aqui:
+                        return Response(
+                            {'error': 'Você não trabalha neste restaurante.'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'Apenas administradores e funcionários podem concluir reservas.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
         
         # Validar status
         if reserva.status != 'confirmada':

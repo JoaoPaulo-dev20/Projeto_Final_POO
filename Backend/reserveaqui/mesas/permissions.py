@@ -1,4 +1,34 @@
 from rest_framework import permissions
+from restaurantes.models import RestauranteUsuario
+
+
+class IsFuncionarioOrHigher(permissions.BasePermission):
+    """
+    Permissão para ações que funcionário pode fazer em mesas.
+    Valida que funcionário trabalha no restaurante.
+    """
+    
+    def has_object_permission(self, request, view, obj):
+        """Valida que funcionário trabalha no restaurante da mesa"""
+        user = request.user
+        
+        # Admin_sistema pode fazer tudo
+        if user.usuariopapel_set.filter(papel__nome='admin_sistema').exists():
+            return True
+        
+        # Admin_secundario se for proprietário do restaurante
+        if obj.restaurante.proprietario == user:
+            return True
+        
+        # Funcionário: validar que trabalha naquele restaurante
+        if user.usuariopapel_set.filter(papel__nome='funcionario').exists():
+            return RestauranteUsuario.objects.filter(
+                usuario=user,
+                restaurante=obj.restaurante,
+                papel__nome='funcionario'
+            ).exists()
+        
+        return False
 
 
 class IsAdminForWriteOrReadOnly(permissions.BasePermission):
