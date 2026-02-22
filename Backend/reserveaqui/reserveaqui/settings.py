@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9wm_db(aoq9xw#b(g6iyag*^nrvafut^)a!p+rhc-h)jdxzh9n'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-9wm_db(aoq9xw#b(g6iyag*^nrvafut^)a!p+rhc-h)jdxzh9n')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 
 # Application definition
@@ -161,34 +162,23 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ALGORITHM': 'HS256',
 }
-# Email Configuration for Password Recovery (RF03)
-# Em desenvolvimento, usando console backend (imprime no console)
-# Em produção, configurar com SMTP real
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Development
-DEFAULT_FROM_EMAIL = 'noreply@reserveaqui.com'
+# Email Configuration for Password Recovery
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='noreply@reserveaqui.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@reserveaqui.com')
 
-# Configurar para produção (exemplo com Gmail):
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'seu_email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'sua_senha_app'
-# DEFAULT_FROM_EMAIL = 'seu_email@gmail.com'
-
-# Frontend URL para links de recuperação
-# Em desenvolvimento: http://localhost:3000
-# Em produção: https://seu-dominio.com
-FRONTEND_URL = 'http://localhost:3000'
-
+# Frontend URL para links de recuperação de senha
 # CORS Configuration para React + TypeScript Frontend
 # Permite requisições cross-origin do frontend
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',      # React dev server
-    'http://localhost:8000',      # Django dev server
-    'http://127.0.0.1:3000',      # Alternativo
-    'http://127.0.0.1:8000',      # Alternativo
-]
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:8000',
+    cast=Csv()
+)
 
 # Para produção, decomente e configure com domínios reais:
 # CORS_ALLOWED_ORIGINS = [
