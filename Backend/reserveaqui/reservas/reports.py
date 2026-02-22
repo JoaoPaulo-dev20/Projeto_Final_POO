@@ -1,5 +1,5 @@
 """
-Módulo de Relatórios para RF13.
+Módulo de Relatórios de ocupação e movimentação.
 Endpoints de relatório de ocupação, horários mais movimentados e estatísticas por período.
 """
 
@@ -50,7 +50,7 @@ class RelatorioHelper:
     @staticmethod
     def gerar_relatorio_ocupacao(restaurante_id=None, data_inicio=None, data_fim=None):
         """
-        RF13: Gera relatório de ocupação de mesas.
+        Gera relatório de ocupação de mesas.
         Calcula percentual de ocupação por restaurante/data.
         """
         from restaurantes.models import Restaurante
@@ -121,7 +121,7 @@ class RelatorioHelper:
     @staticmethod
     def gerar_relatorio_horarios_movimentados(restaurante_id=None, data_inicio=None, data_fim=None, top=10):
         """
-        RF13: Gera relatório de horários mais movimentados.
+        Gera relatório de horários mais movimentados.
         Identifica os horários com maior número de reservas.
         """
         # Filtros padrão
@@ -180,7 +180,7 @@ class RelatorioHelper:
     @staticmethod
     def gerar_relatorio_estatisticas_periodo(restaurante_id=None, data_inicio=None, data_fim=None, tipo_periodo='dia'):
         """
-        RF13: Gera estatísticas por período (dia, semana, mês).
+        Gera estatísticas por período (dia, semana, mês).
         Calcula: total, confirmadas, canceladas, pessoas, ticket médio, taxa de cancelamento.
         """
         # Filtros padrão

@@ -121,10 +121,10 @@ class TrocarSenhaSerializer(serializers.Serializer):
 class SolicitarRecuperacaoSenhaSerializer(serializers.Serializer):
     """
     Serializer para solicitar recuperação de senha.
-    RF03: Permitir recuperação de senha mediante validação do e-mail cadastrado.
+    Valida se o email existe e é válido para envio de token.
     """
     email = serializers.EmailField(required=True)
-    
+
     def validate_email(self, value):
         """Verifica se o email está cadastrado"""
         try:
@@ -139,7 +139,7 @@ class SolicitarRecuperacaoSenhaSerializer(serializers.Serializer):
 class RedefinirSenhaSerializer(serializers.Serializer):
     """
     Serializer para redefinir senha usando token de recuperação.
-    RF03: Permitir recuperação de senha mediante validação do e-mail cadastrado.
+    Valida token, email e força da nova senha.
     """
     token = serializers.CharField(required=True, write_only=True)
     email = serializers.EmailField(required=True)

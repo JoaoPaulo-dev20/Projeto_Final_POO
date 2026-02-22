@@ -21,7 +21,7 @@ class MesaViewSet(viewsets.ModelViewSet):
     update: Atualizar mesa (apenas admin ou proprietário - RN05)
     partial_update: Atualizar parcialmente mesa (apenas admin ou proprietário - RN05)
     destroy: Remover mesa (apenas admin - RN05)
-    disponibilidade: Consultar mesas disponíveis por data e horário (RF04)
+    disponibilidade: Consultar mesas disponíveis por data e horário
     """
     
     queryset = Mesa.objects.select_related('restaurante').all()
@@ -72,7 +72,7 @@ class MesaViewSet(viewsets.ModelViewSet):
             ).exists()
             
             if is_admin_secundario:
-                # 🔒 Apenas mesas do restaurante que é proprietário
+                # Apenas mesas do restaurante que é proprietário
                 from restaurantes.models import Restaurante
                 seu_restaurante = Restaurante.objects.filter(proprietario=user).first()
                 if seu_restaurante:
@@ -86,7 +86,7 @@ class MesaViewSet(viewsets.ModelViewSet):
                 ).exists()
                 
                 if is_funcionario:
-                    # 🔒 Buscar restaurantes onde trabalha
+                    # Buscar restaurantes onde trabalha
                     restaurantes_ids = RestauranteUsuario.objects.filter(
                         usuario=user,
                         papel__nome='funcionario'
@@ -116,7 +116,7 @@ class MesaViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='disponibilidade')
     def disponibilidade(self, request):
         """
-        Consulta disponibilidade de mesas por data e horário (RF04).
+        Consulta disponibilidade de mesas por data e horário.
         
         Query params:
         - restaurante_id (obrigatório): ID do restaurante
@@ -244,7 +244,7 @@ class MesaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # 🔒 Validar permissão: admin_sistema, admin_secundario ou funcionario
+        # Validar permissão: admin_sistema, admin_secundario ou funcionario
         user = request.user
         
         # Admin_sistema: tudo bem
@@ -263,7 +263,7 @@ class MesaViewSet(viewsets.ModelViewSet):
                 ).exists()
                 
                 if is_funcionario:
-                    # 🔒 Validar que trabalha no restaurante
+                    # Validar que trabalha no restaurante
                     trabalha_aqui = RestauranteUsuario.objects.filter(
                         usuario=user,
                         restaurante=mesa.restaurante,
@@ -296,7 +296,7 @@ class MesaViewSet(viewsets.ModelViewSet):
         
         Body: { "ativa": true|false }
         """
-        # 🔒 Apenas admin_sistema
+        # Apenas admin_sistema
         is_admin_sistema = request.user.usuariopapel_set.filter(
             papel__nome='admin_sistema'
         ).exists()

@@ -74,8 +74,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def solicitar_recuperacao(self, request):
         """
         Endpoint para solicitar recuperação de senha.
-        RF03: Permitir recuperação de senha mediante validação do e-mail cadastrado.
-        Gera um token e envia por email (simular envio).
+        Gera um token e envia por email.
         """
         serializer = SolicitarRecuperacaoSenhaSerializer(data=request.data)
         if serializer.is_valid():
@@ -136,7 +135,7 @@ Equipe ReserveAqui
     def redefinir_senha(self, request):
         """
         Endpoint para redefinir senha usando token de recuperação.
-        RF03: Permitir recuperação de senha mediante validação do e-mail cadastrado.
+        Valida o token antes de permitir a redefinição.
         """
         serializer = RedefinirSenhaSerializer(data=request.data)
         if serializer.is_valid():

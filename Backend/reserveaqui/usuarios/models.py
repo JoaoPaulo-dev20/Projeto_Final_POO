@@ -75,7 +75,7 @@ class UsuarioPapel(models.Model):
 class PasswordResetToken(models.Model):
     """
     Modelo para armazenar tokens de recuperação de senha.
-    RF03: Recuperação de senha mediante validação do e-mail cadastrado.
+    Permite que usuários recuperem suas contas via email validado.
     """
     usuario = models.OneToOneField(
         Usuario,

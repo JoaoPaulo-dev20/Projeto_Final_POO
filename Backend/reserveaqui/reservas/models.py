@@ -156,7 +156,7 @@ class ReservaMesa(models.Model):
 class Notificacao(models.Model):
     """
     Modelo para armazenar notificações de reservas.
-    RF07: Informar ao cliente a confirmação da reserva.
+    Informa ao cliente sobre eventos relacionados às suas reservas.
     """
     
     TIPO_NOTIFICACAO = [

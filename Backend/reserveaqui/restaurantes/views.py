@@ -46,7 +46,7 @@ class RestauranteViewSet(viewsets.ModelViewSet):
         if self.action in ['update', 'partial_update']:
             return [IsAuthenticated(), IsProprietarioOrAdmin()]
         elif self.action == 'destroy':
-            # 🔒 Apenas admin_sistema pode deletar restaurante (não admin_secundario)
+            # Apenas admin_sistema pode deletar restaurante (não admin_secundario)
             return [IsAuthenticated(), IsAdminSystemOnly()]
         return super().get_permissions()
     
@@ -77,7 +77,7 @@ class RestauranteViewSet(viewsets.ModelViewSet):
         ).exists()
         
         if is_admin_secundario:
-            # 🔒 Admin_secundario é proprietário de apenas 1 restaurante
+            # Admin_secundario é proprietário de apenas 1 restaurante
             restaurante = queryset.filter(proprietario=user).first()
             if restaurante:
                 return queryset.filter(id=restaurante.id)

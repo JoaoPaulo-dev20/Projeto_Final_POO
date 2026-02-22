@@ -21,13 +21,11 @@ class ReservaViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gerenciamento de reservas.
     
-    Implementa:
-    - RF05: Criar, editar e cancelar reservas
-    - RF06: Validação de conflito de mesas
-    - RF07: Confirmação de reserva
-    - RF12: Listar reservas do usuário
-    - RN01: Impedir mesma mesa no mesmo horário
-    - RN03: Liberar mesas ao cancelar
+    Implementa funcionalidades para:
+    - Criar, editar e cancelar reservas
+    - Validação de conflito de mesas
+    - Confirmação de reserva
+    - Listagem de reservas do usuário
     """
     
     queryset = Reserva.objects.all()
@@ -48,7 +46,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        RF12: Filtrar reservas por usuário.
+        Filtrar reservas por usuário.
         - Admins veem todas as reservas
         - Usuários comuns veem apenas suas próprias reservas
         """
@@ -68,8 +66,8 @@ class ReservaViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """
-        RF05: Criar reserva com alocação automática de mesas.
-        RF06: Validação de conflito.
+        Criar nova reserva com alocação automática de mesas.
+        Valida conflitos e disponibilidade.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -89,7 +87,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         )
     
     def update(self, request, *args, **kwargs):
-        """RF05: Editar reserva com validações"""
+        """Editar reserva com validações"""
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
@@ -109,7 +107,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         Apenas admin_sistema pode deletar reserva.
         Clientes devem usar cancelar/ action ao invés de DELETE.
         """
-        # 🔒 Apenas admin_sistema
+        # Apenas admin_sistema
         is_admin_sistema = request.user.usuariopapel_set.filter(
             papel__nome='admin_sistema'
         ).exists()
@@ -132,7 +130,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def confirmar(self, request, pk=None):
         """
-        RF07: Confirmar reserva.
+        Confirmar reserva.
         Permitido para: admin_sistema, admin_secundario, funcionario
         Cria automaticamente uma notificação para o cliente.
         """
@@ -194,7 +192,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         reserva.status = 'confirmada'
         reserva.save()
         
-        # RF07: Criar notificação de confirmação para o cliente
+        # Criar notificação de confirmação para o cliente
         if reserva.usuario:
             Notificacao.objects.create(
                 usuario=reserva.usuario,
@@ -215,14 +213,14 @@ class ReservaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
         """
-        RF05: Cancelar reserva.
-        RN03: Liberar mesas automaticamente ao cancelar.
+        Cancelar reserva.
+        Libera as mesas alocadas.
         Permitido para: dono da reserva, admin_sistema, admin_secundario, funcionario
         """
         reserva = self.get_object()
         user = request.user
         
-        # 🔒 Validar permissão: dono OU admin OU funcionário do restaurante
+        # Validar permissão: dono OU admin OU funcionário do restaurante
         is_dono = reserva.usuario == user
         is_admin_sistema = user.usuariopapel_set.filter(
             papel__nome='admin_sistema'

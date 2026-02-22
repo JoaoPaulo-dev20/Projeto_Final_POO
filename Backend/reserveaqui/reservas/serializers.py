@@ -114,7 +114,7 @@ class ReservaCreateUpdateSerializer(serializers.ModelSerializer):
     def _verificar_disponibilidade(self, restaurante, data_reserva, horario, quantidade_pessoas, reserva_atual=None):
         """
         Verifica se há mesas disponíveis para a reserva.
-        RF06, RN01: Impedir reservas de uma mesma mesa no mesmo horário
+        Impedir reservas de uma mesma mesa no mesmo horário
         """
         # Calcular quantas mesas são necessárias
         mesas_necessarias = math.ceil(quantidade_pessoas / 4)
@@ -160,7 +160,7 @@ class ReservaCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Cria uma reserva e aloca automaticamente as mesas necessárias.
-        RF05: Permitir realizar reservas
+        Validação para criar reservas
         """
         restaurante = validated_data['restaurante']
         data_reserva = validated_data['data_reserva']
@@ -189,7 +189,7 @@ class ReservaCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """
         Atualiza uma reserva com validações.
-        RF05: Permitir editar reservas
+        Validação para editar reservas
         """
         # Validar se a reserva pode ser editada
         if instance.status in ['cancelada', 'concluida']:

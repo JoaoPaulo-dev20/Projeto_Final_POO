@@ -80,12 +80,12 @@ Authorization: Bearer <seu_access_token>
 
 | Endpoint | Método | Descrição | Auth |
 |----------|--------|-----------|------|
-| `/api/usuarios/cadastro/` | POST | Registrar novo usuário | ❌ |
-| `/api/usuarios/login/` | POST | Login com JWT | ❌ |
-| `/api/usuarios/me/` | GET | Dados do usuário logado | ✅ |
-| `/api/usuarios/trocar_senha/` | POST | Mudar senha | ✅ |
-| `/api/usuarios/solicitar_recuperacao/` | POST | Recuperar senha (envia email) | ❌ |
-| `/api/usuarios/redefinir_senha/` | POST | Redefinir com token | ❌ |
+| `/api/usuarios/cadastro/` | POST | Registrar novo usuário | OPTIONAL |
+| `/api/usuarios/login/` | POST | Login com JWT | OPTIONAL |
+| `/api/usuarios/me/` | GET | Dados do usuário logado | REQUIRED |
+| `/api/usuarios/trocar_senha/` | POST | Mudar senha | REQUIRED |
+| `/api/usuarios/solicitar_recuperacao/` | POST | Recuperar senha (envia email) | OPTIONAL |
+| `/api/usuarios/redefinir_senha/` | POST | Redefinir com token | OPTIONAL |
 
 **Validação de Senha**: Mínimo 8 caracteres, 1 letra maiúscula, 1 número
 
@@ -287,23 +287,6 @@ Backend/
 ```
 
 ---
-
-## Email (Password Recovery)
-
-**Desenvolvimento**: Imprime email no console
-```
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-```
-
-**Produção**: Configurar SMTP (exemplo Gmail):
-```python
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'seu_email@gmail.com'
-EMAIL_HOST_PASSWORD = 'sua_senha_de_app'
-```
 
 ---
 
