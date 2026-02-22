@@ -29,23 +29,37 @@ O sistema **ReserveAqui** tem como objetivo facilitar o gerenciamento de reserva
 
 ---
 
-## Definição Inicial do Escopo
+## Escopo do Projeto
 
-### Funcionalidades para Clientes
-- Cadastro e login de usuários  
-- Consulta de disponibilidade de mesas  
-- Realização, edição e cancelamento de reservas online  
-- Recebimento de confirmação da reserva  
+### Funcionalidades para Cliente
+- Cadastro e login de usuários
+- Consulta de disponibilidade de mesas
+- Realização, edição e cancelamento de reservas
+- Recebimento de confirmação da reserva
+- Recuperação de senha por email
+- Visualização do histórico de reservas
 
-### Funcionalidades para Administradores (Restaurante)
-- Cadastro e gerenciamento de mesas  
-- Gerenciamento de horários e disponibilidade  
-- Visualização das reservas realizadas  
+### Funcionalidades para Funcionário (Restaurante)
+- Alterar status de mesas (disponível/ocupada)
+- Confirmar reservas do restaurante
+- Cancelar reservas do restaurante
+- Visualizar reservas do restaurante
+
+### Funcionalidades para Admin Secundário (Proprietário)
+- Cadastro e gerenciamento de mesas do restaurante
+- Gerenciamento do restaurante
+- Visualização das reservas realizadas
+- Confirmar e cancelar reservas
 - Geração de relatórios gerenciais:
   - Taxa de ocupação
   - Horários mais movimentados
 
+### Funcionalidades para Admin Sistema
+- Acesso total ao sistema
+- Cadastro e gerenciamento de todos os restaurantes
+- Deletar restaurantes e dados sensíveis
+- Visualização de todos os relatórios
+
 ### Limitações do Escopo (Inicial)
-- Não inclui sistema de pagamento online  
-- Não inclui integração com aplicativos externos (ex: iFood, Uber Eats)  
-- Interface focada em ambiente web
+- Não inclui sistema de pagamento online
+- Não inclui integração com aplicativos externos (ex: iFood, Uber Eats)
