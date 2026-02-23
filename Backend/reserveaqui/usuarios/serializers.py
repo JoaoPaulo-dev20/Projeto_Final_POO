@@ -11,6 +11,45 @@ class PapelSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'get_tipo_display')
 
 
+class CadastroPublicoSerializer(serializers.ModelSerializer):
+    """Serializer para cadastro público - cria apenas usuários do tipo cliente"""
+    password = serializers.CharField(
+        write_only=True, 
+        required=True, 
+        style={'input_type': 'password'},
+        validators=[validar_forca_senha]
+    )
+    password_confirm = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    class Meta:
+        model = Usuario
+        fields = ('id', 'email', 'nome', 'password', 'password_confirm', 'date_joined')
+        read_only_fields = ('id', 'date_joined')
+
+    def validate(self, data):
+        """Validar se as senhas batem"""
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError({'password': 'As senhas não correspondem.'})
+        return data
+
+    def create(self, validated_data):
+        """Criar novo usuário com papel de cliente automaticamente"""
+        validated_data.pop('password_confirm')
+        password = validated_data.pop('password')
+        
+        # Gerar username a partir do email
+        email = validated_data.get('email')
+        username = email.split('@')[0]
+        
+        usuario = Usuario.objects.create_user(username=username, **validated_data, password=password)
+        
+        # Adicionar papel de cliente automaticamente
+        papel_cliente = Papel.objects.get(tipo='cliente')
+        usuario.papeis.add(papel_cliente)
+        
+        return usuario
+
+
 class UsuarioSerializer(serializers.ModelSerializer):
     """Serializer para o modelo Usuario"""
     papeis = PapelSerializer(many=True, read_only=True)

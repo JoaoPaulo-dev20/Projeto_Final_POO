@@ -8,9 +8,12 @@ from .serializers import (
     RestauranteSerializer,
     RestauranteListSerializer,
     RestauranteCreateUpdateSerializer,
-    RestauranteUsuarioSerializer
+    RestauranteUsuarioSerializer,
+    AdicionarFuncionarioSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsProprietarioOrAdmin, IsAdminSystemOnly
+from usuarios.models import Usuario, Papel
+from usuarios.utils import enviar_senha_generica
 
 
 class RestauranteViewSet(viewsets.ModelViewSet):
@@ -88,11 +91,35 @@ class RestauranteViewSet(viewsets.ModelViewSet):
         return queryset.filter(ativo=True)
     
     def perform_create(self, serializer):
-        """Ao criar, define o usuário atual como proprietário se não especificado"""
-        if 'proprietario' not in serializer.validated_data:
-            serializer.save(proprietario=self.request.user)
-        else:
-            serializer.save()
+        """Ao criar restaurante, cria também o proprietário (admin_secundario) com senha genérica"""
+        proprietario_email = serializer.validated_data.pop('proprietario_email', None)
+        proprietario_nome = serializer.validated_data.pop('proprietario_nome', None)
+        
+        # Gerar senha genérica
+        senha_generica = Usuario.gerar_senha_generica()
+        
+        # Criar usuário admin_secundario
+        username = proprietario_email.split('@')[0]
+        proprietario = Usuario.objects.create_user(
+            username=username,
+            email=proprietario_email,
+            nome=proprietario_nome,
+            password=senha_generica
+        )
+        
+        # Marcar para trocar senha no primeiro acesso
+        proprietario.precisa_trocar_senha = True
+        proprietario.save()
+        
+        # Adicionar papel admin_secundario
+        papel_admin = Papel.objects.get(tipo='admin_secundario')
+        proprietario.papeis.add(papel_admin)
+        
+        # Enviar senha por email
+        enviar_senha_generica(proprietario, senha_generica, 'Administrador Secundário')
+        
+        # Salvar restaurante com proprietário
+        serializer.save(proprietario=proprietario)
     
     @action(detail=True, methods=['get'])
     def mesas(self, request, pk=None):
@@ -138,6 +165,67 @@ class RestauranteViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def adicionar_funcionario(self, request, pk=None):
+        """
+        Endpoint para admin_secundario criar funcionários do seu restaurante.
+        Cria o usuário com senha genérica enviada por email.
+        """
+        restaurante = self.get_object()
+        
+        # Verifica se é o proprietário (admin_secundario) do restaurante
+        if restaurante.proprietario != request.user:
+            return Response(
+                {"detail": "Apenas o proprietário do restaurante pode adicionar funcionários."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = AdicionarFuncionarioSerializer(data=request.data)
+        if serializer.is_valid():
+            # Gerar senha genérica
+            senha_generica = Usuario.gerar_senha_generica()
+            
+            # Criar usuário funcionário
+            email = serializer.validated_data['email']
+            nome = serializer.validated_data['nome']
+            
+            username = email.split('@')[0]
+            funcionario = Usuario.objects.create_user(
+                username=username,
+                email=email,
+                nome=nome,
+                password=senha_generica
+            )
+            
+            # Marcar para trocar senha no primeiro acesso
+            funcionario.precisa_trocar_senha = True
+            funcionario.save()
+            
+            # Adicionar papel de funcionário
+            papel_funcionario = Papel.objects.get(tipo='funcionario')
+            funcionario.papeis.add(papel_funcionario)
+            
+            # Vincular ao restaurante
+            RestauranteUsuario.objects.create(
+                restaurante=restaurante,
+                usuario=funcionario,
+                papel='funcionario'
+            )
+            
+            # Enviar senha por email
+            enviar_senha_generica(funcionario, senha_generica, 'Funcionário')
+            
+            return Response({
+                'mensagem': 'Funcionário adicionado com sucesso! Uma senha temporária foi enviada para o email.',
+                'funcionario': {
+                    'id': funcionario.id,
+                    'email': funcionario.email,
+                    'nome': funcionario.nome
+                }
+            }, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

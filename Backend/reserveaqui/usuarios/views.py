@@ -8,7 +8,8 @@ from django.conf import settings
 from .models import Usuario, PasswordResetToken
 from .serializers import (
     UsuarioSerializer, LoginSerializer, TrocarSenhaSerializer,
-    SolicitarRecuperacaoSenhaSerializer, RedefinirSenhaSerializer
+    SolicitarRecuperacaoSenhaSerializer, RedefinirSenhaSerializer,
+    CadastroPublicoSerializer
 )
 
 
@@ -19,12 +20,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def cadastro(self, request):
-        """Endpoint para cadastro de novo usuário"""
-        serializer = self.get_serializer(data=request.data)
+        """Endpoint para cadastro público - cria apenas usuários do tipo cliente"""
+        serializer = CadastroPublicoSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            usuario = serializer.save()
             return Response(
-                {'mensagem': 'Usuário cadastrado com sucesso!', 'usuario': serializer.data},
+                {'mensagem': 'Usuário cadastrado com sucesso!', 'usuario': UsuarioSerializer(usuario).data},
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -52,6 +53,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'email': usuario.email,
                     'nome': usuario.nome,
                     'papeis': [{'tipo': p.tipo, 'descricao': p.get_tipo_display()} for p in usuario.papeis.all()],
+                    'precisa_trocar_senha': usuario.precisa_trocar_senha
                 }
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -64,6 +66,11 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             usuario = request.user
             nova_senha = serializer.validated_data['nova_senha']
             usuario.set_password(nova_senha)
+            
+            # Remover flag de precisa trocar senha
+            if usuario.precisa_trocar_senha:
+                usuario.precisa_trocar_senha = False
+            
             usuario.save()
             
             return Response({

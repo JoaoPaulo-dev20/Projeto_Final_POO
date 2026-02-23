@@ -63,6 +63,10 @@ class RestauranteListSerializer(serializers.ModelSerializer):
 class RestauranteCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer para criação e atualização de restaurante"""
     
+    # Campos para criação do proprietário (admin_secundario)
+    proprietario_email = serializers.EmailField(write_only=True, required=False)
+    proprietario_nome = serializers.CharField(max_length=150, write_only=True, required=False)
+    
     class Meta:
         model = Restaurante
         fields = [
@@ -75,9 +79,14 @@ class RestauranteCreateUpdateSerializer(serializers.ModelSerializer):
             'telefone',
             'email',
             'proprietario',
+            'proprietario_email',
+            'proprietario_nome',
             'quantidade_mesas',
             'ativo'
         ]
+        extra_kwargs = {
+            'proprietario': {'read_only': True}
+        }
     
     def validate_quantidade_mesas(self, value):
         """Valida que a quantidade de mesas é razoável"""
@@ -88,8 +97,15 @@ class RestauranteCreateUpdateSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, data):
-        """Validações adicionais"""
-        # Verifica se o proprietário existe e está ativo
+        """Valida dados do proprietário e outras validações"""
+        # Se está criando (não tem instance), exige dados do proprietário
+        if not self.instance:
+            if not all(k in data for k in ['proprietario_email', 'proprietario_nome']):
+                raise serializers.ValidationError(
+                    'Para criar um restaurante, forneça: proprietario_email e proprietario_nome'
+                )
+        
+        # Verifica se o proprietário existe e está ativo (para updates)
         if 'proprietario' in data:
             if not data['proprietario'].is_active:
                 raise serializers.ValidationError(
@@ -118,3 +134,16 @@ class RestauranteUsuarioSerializer(serializers.ModelSerializer):
             'data_vinculacao'
         ]
         read_only_fields = ['id', 'data_vinculacao']
+
+
+class AdicionarFuncionarioSerializer(serializers.Serializer):
+    """Serializer para adicionar funcionário ao restaurante"""
+    email = serializers.EmailField(required=True)
+    nome = serializers.CharField(max_length=150, required=True)
+    
+    def validate_email(self, value):
+        """Valida que o email não está em uso"""
+        from usuarios.models import Usuario
+        if Usuario.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Já existe um usuário com este email.")
+        return value
