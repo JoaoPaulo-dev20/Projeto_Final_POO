@@ -119,7 +119,14 @@ class RestauranteViewSet(viewsets.ModelViewSet):
         enviar_senha_generica(proprietario, senha_generica, 'Administrador Secundário')
         
         # Salvar restaurante com proprietário
-        serializer.save(proprietario=proprietario)
+        restaurante = serializer.save(proprietario=proprietario)
+        
+        # Vincular proprietário ao restaurante na tabela RestauranteUsuario
+        RestauranteUsuario.objects.create(
+            restaurante=restaurante,
+            usuario=proprietario,
+            papel='admin_secundario'
+        )
     
     @action(detail=True, methods=['get'])
     def mesas(self, request, pk=None):

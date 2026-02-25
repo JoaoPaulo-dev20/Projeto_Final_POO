@@ -12,7 +12,6 @@ class Mesa(models.Model):
     STATUS_CHOICES = [
         ('disponivel', 'Disponível'),
         ('ocupada', 'Ocupada'),
-        ('manutencao', 'Em Manutenção'),
     ]
     
     restaurante = models.ForeignKey(

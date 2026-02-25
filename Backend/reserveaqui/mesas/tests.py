@@ -126,7 +126,7 @@ class MesaModelTest(TestCase):
     
     def test_status_choices(self):
         """Teste de todos os status disponíveis"""
-        status_list = ['disponivel', 'ocupada', 'manutencao']
+        status_list = ['disponivel', 'ocupada']
         
         for idx, status in enumerate(status_list):
             mesa = Mesa.objects.create(

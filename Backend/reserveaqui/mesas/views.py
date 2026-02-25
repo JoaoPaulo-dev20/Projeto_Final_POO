@@ -230,17 +230,17 @@ class MesaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'])
     def alternar_status(self, request, pk=None):
         """
-        Alterna o status da mesa entre disponível, ocupada e manutenção.
+        Alterna o status da mesa entre disponível e ocupada.
         Permitido para: admin_sistema, admin_secundario, funcionario
         
-        Body: { "status": "disponivel"|"ocupada"|"manutencao" }
+        Body: { "status": "disponivel"|"ocupada" }
         """
         mesa = self.get_object()
         novo_status = request.data.get('status')
         
-        if novo_status not in ['disponivel', 'ocupada', 'manutencao']:
+        if novo_status not in ['disponivel', 'ocupada']:
             return Response(
-                {"error": "Status inválido. Use: disponivel, ocupada ou manutencao."},
+                {"error": "Status inválido. Use: disponivel ou ocupada."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
